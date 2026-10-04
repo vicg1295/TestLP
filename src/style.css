@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+@theme {
+  /* Палітра «синтетичного глянцю» */
+  --color-pearl: #eef0f4;
+  --color-pearl-deep: #e3e6ec;
+  --color-graphite: #1c1f26;
+  --color-steel: #5b6170;
+  --color-chrome: #c9ced8;
+  --color-iris: #7a5cff;
+  --color-tg: #2aabee;
+  --color-tg-deep: #1576c2;
+  --color-tg-deeper: #0f65a8;
+
+  /* Перламутрова фольга */
+  --color-foil-mint: #b8f3e6;
+  --color-foil-lilac: #c9b8ff;
+  --color-foil-pink: #ffd3ec;
+  --color-foil-sky: #bfe3ff;
+
+  --font-display: "Unbounded Variable", "Unbounded Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Onest Variable", "Onest Fallback", ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * Запасні шрифти з підігнаною шириною: поки вебшрифти вантажаться, текст займає
+ * стільки ж місця, і після підміни верстка не стрибає (CLS).
+ * Коефіцієнти виміряно на тексті сторінки: Unbounded 600 ширший за Arial Bold на 29%,
+ * Onest 400 — за Arial на 4%.
+ */
+@font-face {
+  font-family: "Unbounded Fallback";
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Arial");
+  font-weight: 100 900;
+  size-adjust: 129%;
+}
+
+@font-face {
+  font-family: "Onest Fallback";
+  src: local("Arial"), local("ArialMT");
+  size-adjust: 104%;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-pearl);
+    color: var(--color-graphite);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-iris);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+@layer components {
+  /* Хромована рамка: градієнт у border-box під білою підкладкою */
+  .chrome-frame {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(var(--color-white), var(--color-white)) padding-box,
+      linear-gradient(140deg, #ffffff 0%, #c9ced8 28%, #8f96a3 52%, #eef0f4 70%, #b3b9c5 100%) border-box;
+  }
+
+  /* Металевий текст для логотипа */
+  .chrome-text {
+    background: linear-gradient(180deg, #3a3f4b 0%, #1c1f26 42%, #6b7180 58%, #1c1f26 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /*
+   * Голографічна фольга поверх фото.
+   * ::before — постійний перламутровий відлив у нижній частині кадру (видно і на тач-екранах),
+   * ::after — перламутрова смуга, яка пробігає по картці при наведенні або фокусі.
+   */
+  .holo-media {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .holo-media::before,
+  .holo-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .holo-media::before {
+    background: linear-gradient(
+      100deg,
+      var(--color-foil-mint),
+      var(--color-foil-lilac) 35%,
+      var(--color-foil-pink) 65%,
+      var(--color-foil-sky)
+    );
+    -webkit-mask-image: linear-gradient(to top, #000, transparent 38%);
+    mask-image: linear-gradient(to top, #000, transparent 38%);
+    mix-blend-mode: screen;
+    opacity: 0.4;
+  }
+
+  .holo-media::after {
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      var(--color-foil-mint) 40%,
+      var(--color-foil-lilac) 47%,
+      var(--color-foil-pink) 54%,
+      var(--color-foil-sky) 61%,
+      transparent 71%
+    );
+    background-size: 300% 300%;
+    background-position: 100% 100%;
+    mix-blend-mode: screen;
+    opacity: 0.55;
+    transition:
+      background-position 1100ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      opacity 500ms ease;
+  }
+
+  .holo-card:hover .holo-media::after,
+  .holo-card:focus-within .holo-media::after {
+    background-position: 0% 0%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .holo-media::after {
+      transition: none;
+    }
+  }
+
+  /* Кнопки */
+  .btn-tg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    border-radius: 9999px;
+    background-color: var(--color-tg-deep);
+    padding: 0.875rem 1.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-white);
+    transition: background-color 200ms ease;
+  }
+
+  .btn-tg:hover {
+    background-color: var(--color-tg-deeper);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgb(28 31 38 / 0.16);
+    background-color: var(--color-pearl);
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--color-graphite);
+    transition:
+      border-color 200ms ease,
+      background-color 200ms ease;
+  }
+
+  .btn-ghost:hover {
+    border-color: rgb(28 31 38 / 0.4);
+    background-color: var(--color-white);
+  }
+}
