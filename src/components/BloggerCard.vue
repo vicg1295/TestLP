@@ -5,7 +5,7 @@ defineProps({
 </script>
 
 <template>
-  <article class="holo-card chrome-frame flex flex-col rounded-3xl p-2">
+  <article v-pointer-vars v-scroll-var class="tilt-card chrome-frame flex flex-col rounded-3xl p-2">
     <div class="holo-media rounded-2xl bg-pearl-deep">
       <img
         :src="blogger.image"
@@ -16,8 +16,9 @@ defineProps({
         :alt="blogger.alt"
         loading="lazy"
         decoding="async"
-        class="aspect-[4/5] w-full object-cover object-[50%_20%]"
+        class="card-photo aspect-[4/5] w-full object-cover object-[50%_20%]"
       />
+      <span class="holo-glare" aria-hidden="true"></span>
       <span
         class="absolute top-3 left-3 z-10 rounded-full bg-white/75 px-3 py-1 text-xs font-medium text-graphite backdrop-blur-sm"
       >

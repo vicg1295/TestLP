@@ -4,17 +4,21 @@ import { bloggers } from '@/data/bloggers'
 </script>
 
 <template>
-  <section id="catalog" aria-labelledby="catalog-title" class="py-16 sm:py-24">
+  <section id="catalog" aria-labelledby="catalog-title" class="pt-6 pb-16 sm:pt-8 sm:pb-24">
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <h2 id="catalog-title" class="font-display text-[1.75rem] leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-4xl">
+      <h2
+        id="catalog-title"
+        v-reveal
+        class="font-display text-[1.75rem] leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-4xl"
+      >
         Знайомтеся з блогерами
       </h2>
-      <p class="mt-4 max-w-[52ch] text-base leading-relaxed text-steel sm:text-lg">
+      <p v-reveal="120" class="mt-4 max-w-[52ch] text-base leading-relaxed text-steel sm:text-lg">
         У кожного персонажа своя ніша, манера й візуальний стиль. Оберіть того, хто говорить мовою вашої аудиторії.
       </p>
 
       <ul role="list" class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <li v-for="blogger in bloggers" :key="blogger.id" class="flex">
+        <li v-for="(blogger, i) in bloggers" :key="blogger.id" v-reveal="i * 110" class="flex">
           <BloggerCard :blogger="blogger" class="w-full" />
         </li>
       </ul>

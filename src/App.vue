@@ -1,6 +1,7 @@
 <script setup>
 import SiteHeader from './components/SiteHeader.vue'
 import HeroSection from './components/HeroSection.vue'
+import MarqueeBand from './components/MarqueeBand.vue'
 import BloggerCatalog from './components/BloggerCatalog.vue'
 import TelegramCta from './components/TelegramCta.vue'
 import SiteFooter from './components/SiteFooter.vue'
@@ -10,6 +11,7 @@ import SiteFooter from './components/SiteFooter.vue'
   <SiteHeader />
   <main>
     <HeroSection />
+    <MarqueeBand />
     <BloggerCatalog />
     <TelegramCta />
   </main>

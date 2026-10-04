@@ -20,6 +20,8 @@
 
   --font-display: "Unbounded Variable", "Unbounded Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Onest Variable", "Onest Fallback", ui-sans-serif, system-ui, sans-serif;
+
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 /*
@@ -41,6 +43,13 @@
   size-adjust: 104%;
 }
 
+/* Прогрес «роздачі» карток у hero: 0 — колода, 1 — віяло */
+@property --fan {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -48,10 +57,22 @@
   }
 
   body {
+    overflow-x: clip;
     background-color: var(--color-pearl);
     color: var(--color-graphite);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Ледь помітне плівкове зерно поверх усієї сторінки */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   :focus-visible {
@@ -59,14 +80,27 @@
     outline-offset: 3px;
   }
 
+  /* Для тих, хто вимкнув анімації в системі: усе одразу у фінальному стані */
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
     }
   }
 }
 
 @layer components {
+  /* ---------- Хром і логотип ---------- */
+
   /* Хромована рамка: градієнт у border-box під білою підкладкою */
   .chrome-frame {
     border: 1px solid transparent;
@@ -75,19 +109,25 @@
       linear-gradient(140deg, #ffffff 0%, #c9ced8 28%, #8f96a3 52%, #eef0f4 70%, #b3b9c5 100%) border-box;
   }
 
-  /* Металевий текст для логотипа */
+  /* Металевий текст логотипа з відблиском, що періодично пробігає по літерах */
   .chrome-text {
-    background: linear-gradient(180deg, #3a3f4b 0%, #1c1f26 42%, #6b7180 58%, #1c1f26 100%);
+    background: linear-gradient(110deg, #1c1f26 0 40%, #6b7180 46%, #aab1bd 50%, #6b7180 54%, #1c1f26 60% 100%);
+    background-size: 300% 100%;
+    background-position: 100% 0;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    animation: chrome-glint 7s ease-in-out 1.6s infinite;
   }
 
-  /*
-   * Голографічна фольга поверх фото.
-   * ::before — постійний перламутровий відлив у нижній частині кадру (видно і на тач-екранах),
-   * ::after — перламутрова смуга, яка пробігає по картці при наведенні або фокусі.
-   */
+  /* Грані знака по черзі передають одна одній перламутрові кольори */
+  .facet {
+    fill: var(--c);
+    animation: facet-shift 8s linear var(--d, 0s) infinite;
+  }
+
+  /* ---------- Голографічна фольга ---------- */
+
   .holo-media {
     position: relative;
     isolation: isolate;
@@ -99,54 +139,343 @@
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 1;
     pointer-events: none;
   }
 
+  /* Постійний відлив у нижній частині кадру, кольори повільно перетікають */
   .holo-media::before {
     background: linear-gradient(
       100deg,
       var(--color-foil-mint),
-      var(--color-foil-lilac) 35%,
-      var(--color-foil-pink) 65%,
-      var(--color-foil-sky)
+      var(--color-foil-lilac),
+      var(--color-foil-pink),
+      var(--color-foil-sky),
+      var(--color-foil-mint)
     );
-    -webkit-mask-image: linear-gradient(to top, #000, transparent 38%);
-    mask-image: linear-gradient(to top, #000, transparent 38%);
+    background-size: 300% 100%;
+    -webkit-mask-image: linear-gradient(to top, #000, transparent 40%);
+    mask-image: linear-gradient(to top, #000, transparent 40%);
     mix-blend-mode: screen;
-    opacity: 0.4;
+    opacity: 0.42;
+    animation: foil-drift 12s linear infinite;
   }
 
+  /*
+   * Перламутрова смуга. За замовчуванням її рух прив'язаний до прокрутки:
+   * поки картка заїжджає знизу у вікно, смуга пробігає по ній (--sp від −0.9 до −0.2).
+   * Над карткою з курсором смугою керує --foil-pos із директиви v-pointer-vars.
+   */
   .holo-media::after {
+    --foil-scroll: calc(100% - clamp(0, (var(--sp, -1) + 0.9) / 0.7, 1) * 100%);
     background: linear-gradient(
       115deg,
-      transparent 30%,
-      var(--color-foil-mint) 40%,
+      transparent 36%,
+      var(--color-foil-mint) 42%,
       var(--color-foil-lilac) 47%,
-      var(--color-foil-pink) 54%,
-      var(--color-foil-sky) 61%,
-      transparent 71%
+      var(--color-foil-pink) 52%,
+      var(--color-foil-sky) 57%,
+      transparent 64%
     );
     background-size: 300% 300%;
-    background-position: 100% 100%;
+    background-position: var(--foil-pos, var(--foil-scroll) var(--foil-scroll));
     mix-blend-mode: screen;
     opacity: 0.55;
     transition:
-      background-position 1100ms cubic-bezier(0.2, 0.7, 0.2, 1),
-      opacity 500ms ease;
+      background-position 300ms ease-out,
+      opacity 400ms ease;
   }
 
-  .holo-card:hover .holo-media::after,
-  .holo-card:focus-within .holo-media::after {
-    background-position: 0% 0%;
+  /* Картки у hero переливаються самі, без курсора й прокрутки */
+  .holo-auto .holo-media::after {
+    animation: foil-loop 6.5s ease-in-out var(--foil-delay, 0s) infinite;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .holo-media::after {
-      transition: none;
-    }
+  /* Під курсором смуга тонує фото (overlay), а не висвітлює його, тож обличчя не замолочуються */
+  .is-pointer .holo-media::after {
+    mix-blend-mode: overlay;
+    opacity: 0.8;
   }
 
-  /* Кнопки */
+  /*
+   * У hero курсор частіше над текстом, ніж над картками. Смуга видима лише біля центру
+   * секції й пробігає по віялу, коли курсор рухається від тексту до карток.
+   */
+  .is-pointer .holo-auto .holo-media::after {
+    animation: none;
+    background-position: calc(50% - var(--hx, 0) * 110%) calc(50% - var(--hy, 0) * 110%);
+  }
+
+  /* Відблиск-пляма там, де курсор */
+  .holo-glare {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgb(255 255 255 / 0.6), transparent 55%);
+    mix-blend-mode: soft-light;
+    opacity: 0;
+    transition: opacity 400ms ease;
+  }
+
+  .is-pointer .holo-glare {
+    opacity: 1;
+  }
+
+  /* ---------- Картка каталогу ---------- */
+
+  .tilt-card {
+    --lift: 0;
+    transform: perspective(1000px) rotateX(calc(var(--hy, 0) * -7deg)) rotateY(calc(var(--hx, 0) * 9deg))
+      translateY(calc(var(--lift) * -6px));
+    transition:
+      transform 700ms var(--ease-out-soft),
+      box-shadow 500ms ease;
+  }
+
+  .tilt-card.is-pointer {
+    --lift: 1;
+    box-shadow: 0 32px 64px -32px rgb(28 31 38 / 0.45);
+    transition-duration: 200ms, 500ms;
+  }
+
+  /* Фото з запасом по краях повільніше їде всередині рамки — паралакс */
+  .card-photo {
+    scale: 1.12;
+    translate: 0 calc(var(--sp, 0) * -16px);
+    transition: scale 900ms var(--ease-out-soft);
+  }
+
+  .tilt-card.is-pointer .card-photo {
+    scale: 1.18;
+  }
+
+  /* ---------- Поява при прокрутці ---------- */
+
+  .reveal {
+    opacity: 0;
+    transform: perspective(900px) translateY(48px) rotateX(16deg) scale(0.97);
+    transform-origin: 50% 100%;
+    transition:
+      opacity 900ms ease,
+      transform 1100ms var(--ease-out-soft);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ---------- Hero ---------- */
+
+  /* Слова заголовка виїжджають з-під маски по черзі */
+  .word-mask {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    padding-bottom: 0.14em;
+    margin-bottom: -0.14em;
+  }
+
+  .word {
+    display: inline-block;
+    animation: word-rise 1000ms var(--ease-out-soft) both;
+    animation-delay: calc(150ms + var(--i) * 80ms);
+  }
+
+  /* Після появи заголовок стає «фольгою»: по ньому періодично пробігає перелив */
+  .hero-title.is-ready .word {
+    animation: none;
+  }
+
+  .hero-title.is-ready {
+    background: linear-gradient(
+      100deg,
+      var(--color-graphite) 0 38%,
+      #7a5cff 44%,
+      #1fae95 49%,
+      #e0559a 54%,
+      #2a8bee 59%,
+      var(--color-graphite) 65% 100%
+    );
+    background-size: 300% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: title-sheen 9s ease-in-out 300ms infinite;
+  }
+
+  /* Перламутрове сяйво за hero: дрейфує і відстає при прокрутці */
+  .aurora {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    translate: 0 calc(var(--sp, 0) * 160px);
+    /*
+     * Сяйво розчиняється до низу ще до межі секції. Навіть коли паралакс зсуває його
+     * вниз на 160px, обріз припадає на прозору частину.
+     */
+    -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 72%);
+    mask-image: linear-gradient(to bottom, #000 40%, transparent 72%);
+  }
+
+  .aurora-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(64px);
+    opacity: 0.55;
+  }
+
+  .aurora-blob--mint {
+    top: 14%;
+    right: -8rem;
+    width: 26rem;
+    height: 26rem;
+    background: var(--color-foil-mint);
+    animation: drift-a 19s ease-in-out infinite alternate;
+  }
+
+  .aurora-blob--lilac {
+    top: 24%;
+    right: 18%;
+    width: 30rem;
+    height: 30rem;
+    background: var(--color-foil-lilac);
+    animation: drift-b 23s ease-in-out infinite alternate;
+  }
+
+  .aurora-blob--pink {
+    top: 6%;
+    left: -10rem;
+    width: 24rem;
+    height: 24rem;
+    background: var(--color-foil-pink);
+    opacity: 0.45;
+    animation: drift-c 27s ease-in-out infinite alternate;
+  }
+
+  .fan {
+    perspective: 1400px;
+  }
+
+  /*
+   * Позиція картки у віялі. --fan роздає колоду при завантаженні,
+   * --hx/--hy (курсор над hero) дають 3D-нахил і паралакс на різній глибині,
+   * --sp (прокрутка hero вгору) розводить віяло ширше й піднімає картки.
+   */
+  .fan-slot {
+    transform: translate(-50%, -50%)
+      translate(
+        calc(var(--x) * var(--spread, 1) * var(--fan) * (1 + var(--sp, 0) * 0.35) + var(--hx, 0) * var(--depth) * 16px),
+        calc(var(--y) * var(--fan) + var(--hy, 0) * var(--depth) * 12px - var(--sp, 0) * var(--depth) * 80px)
+      )
+      rotate(calc(var(--r) * var(--fan) * (1 + var(--sp, 0) * 1.4)))
+      rotateY(calc(var(--hx, 0) * 12deg)) rotateX(calc(var(--hy, 0) * -10deg));
+    transition: transform 700ms var(--ease-out-soft);
+    animation: fan-deal 1500ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 300ms) both;
+  }
+
+  /* Картки віяла ледь погойдуються, кожна у своєму ритмі */
+  .fan-float {
+    animation: float 6s ease-in-out var(--float-delay, 0s) infinite;
+  }
+
+  /* ---------- Біжучі стрічки ---------- */
+
+  .marquee-band {
+    display: flex;
+    width: 120%;
+    margin-left: -10%;
+    overflow: hidden;
+  }
+
+  .marquee-band--front {
+    position: relative;
+    z-index: 1;
+    rotate: -3deg;
+    translate: calc(var(--sp, 0) * -56px) 0;
+    background: var(--color-graphite);
+    color: var(--color-white);
+    box-shadow: 0 24px 48px -28px rgb(28 31 38 / 0.6);
+  }
+
+  .marquee-band--back {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    rotate: 3deg;
+    translate: calc(var(--sp, 0) * 56px) -50%;
+    background: linear-gradient(
+      90deg,
+      var(--color-foil-mint),
+      var(--color-foil-lilac),
+      var(--color-foil-pink),
+      var(--color-foil-sky),
+      var(--color-foil-mint)
+    );
+    background-size: 200% 100%;
+    color: var(--color-graphite);
+    animation: foil-drift 10s linear infinite;
+  }
+
+  /* Дві однакові половини: зсув на −50% зациклюється без шва */
+  .marquee-track {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    width: max-content;
+    animation: marquee 42s linear infinite;
+  }
+
+  .marquee-track--reverse {
+    animation-direction: reverse;
+    animation-duration: 54s;
+  }
+
+  .marquee-outline {
+    color: transparent;
+    -webkit-text-stroke: 1px var(--color-white);
+  }
+
+  /* ---------- CTA-панель ---------- */
+
+  .cta-glow {
+    animation: spin-slow 22s linear infinite;
+  }
+
+  .cta-spotlight {
+    background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 50%), rgb(201 184 255 / 0.18), transparent 45%);
+    opacity: 0;
+    transition: opacity 500ms ease;
+  }
+
+  .is-pointer > .cta-spotlight {
+    opacity: 1;
+  }
+
+  /* ---------- Шапка ---------- */
+
+  .site-header {
+    animation: header-in 800ms var(--ease-out-soft) both;
+    transition: box-shadow 400ms ease;
+  }
+
+  .scroll-progress {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    transform: scaleX(var(--scroll, 0));
+    transform-origin: 0 50%;
+    background: linear-gradient(90deg, var(--color-foil-mint), var(--color-iris), var(--color-foil-pink), var(--color-tg));
+  }
+
+  /* ---------- Кнопки ---------- */
+
   .btn-tg {
     display: inline-flex;
     align-items: center;
@@ -158,11 +487,33 @@
     font-weight: 600;
     line-height: 1.25;
     color: var(--color-white);
-    transition: background-color 200ms ease;
+    transition:
+      background-color 200ms ease,
+      translate 300ms var(--ease-out-soft),
+      box-shadow 300ms ease;
   }
 
   .btn-tg:hover {
     background-color: var(--color-tg-deeper);
+    translate: 0 -2px;
+    box-shadow: 0 14px 28px -14px rgb(21 118 194 / 0.75);
+  }
+
+  /* Відблиск, що час від часу пробігає по кнопці */
+  .btn-shine {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .btn-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.45) 50%, transparent 70%);
+    transform: translateX(-120%);
+    animation: btn-glint 5s cubic-bezier(0.4, 0, 0.2, 1) 2.4s infinite;
   }
 
   .btn-ghost {
@@ -178,11 +529,160 @@
     color: var(--color-graphite);
     transition:
       border-color 200ms ease,
-      background-color 200ms ease;
+      background-color 200ms ease,
+      translate 300ms var(--ease-out-soft);
   }
 
   .btn-ghost:hover {
     border-color: rgb(28 31 38 / 0.4);
     background-color: var(--color-white);
+    translate: 0 -1px;
+  }
+}
+
+/* Тінь шапки з'являється, щойно сторінку прокрутили */
+html[data-scrolled] .site-header {
+  box-shadow: 0 12px 32px -20px rgb(28 31 38 / 0.35);
+}
+
+/* ---------- Ключові кадри ---------- */
+
+@keyframes chrome-glint {
+  0%,
+  72% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+@keyframes facet-shift {
+  0%,
+  100% {
+    fill: var(--color-foil-mint);
+  }
+  25% {
+    fill: var(--color-foil-lilac);
+  }
+  50% {
+    fill: var(--color-foil-pink);
+  }
+  75% {
+    fill: var(--color-foil-sky);
+  }
+}
+
+@keyframes foil-drift {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 100% 0;
+  }
+}
+
+/* Смуга невидима на обох кінцях, тож стрибок назад непомітний */
+@keyframes foil-loop {
+  0%,
+  45% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+@keyframes word-rise {
+  from {
+    transform: translateY(110%) rotate(5deg);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes title-sheen {
+  0% {
+    background-position: 100% 0;
+  }
+  28%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+@keyframes fan-deal {
+  0% {
+    --fan: 0;
+    opacity: 0;
+    scale: 0.82;
+  }
+  35% {
+    --fan: 0;
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    --fan: 1;
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -8px;
+  }
+}
+
+@keyframes drift-a {
+  to {
+    transform: translate(-22%, 18%) scale(1.15);
+  }
+}
+
+@keyframes drift-b {
+  to {
+    transform: translate(16%, -20%) scale(0.9);
+  }
+}
+
+@keyframes drift-c {
+  to {
+    transform: translate(26%, -14%) scale(1.2);
+  }
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes header-in {
+  from {
+    opacity: 0;
+    translate: 0 -100%;
+  }
+}
+
+@keyframes btn-glint {
+  0% {
+    transform: translateX(-120%);
+  }
+  30%,
+  100% {
+    transform: translateX(120%);
   }
 }
